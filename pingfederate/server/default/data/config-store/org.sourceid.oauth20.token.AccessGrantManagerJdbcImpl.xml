@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<c:config xmlns:c="http://www.sourceid.org/2004/05/config">
+
+    <!-- Data store ID -->
+    <c:item name="PingFederateDSJNDIName">PFDefaultDS</c:item>
+
+    <!-- Encrypt user attributes that will be stored in the database? -->
+    <c:item name="EncryptUserAttributes">true</c:item>
+
+    <!-- Batch size for expired grant cleanup operations -->
+    <c:item name="ExpiredGrantBatchSize">500</c:item>
+
+</c:config>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+#*
+The server renders this HTML page in an end-user's browser when
+needed authentication credentials may be obtained via HTTP Basic
+Authentication or an HTML form.
+
+Velocity variables (identified by the $ character) are generated
+at runtime by the server.
+
+The following variables are available on this page, but not used by default:
+
+$entityId       - The entity id (connection id) of the SP Connection used in this SSO transaction
+$connectionName - The name of the SP Connection used in this SSO transaction
+$client_id      - The id of the OAuth client used in this transaction
+$spAdapterId    - The SP Adapter ID used in this transaction
+
+It is recommended to sanitize the values that are displayed using $escape.escape() for example $escape.escape($client_id).
+
+Change text or formatting as needed. Modifying Velocity statements
+is not recommended as it may interfere with expected server behavior.
+*#
+
+<!-- template name: local.identity.profile.html -->
+
+#set( $messageKeyPrefix = "local.identity.profile." )
+#set( $passwordPolicy = $templateMessages.getMessage("local.identity.passwordPolicy") )
+
+<html lang="$locale.getLanguage()" dir="ltr">
+<head>
+    <title>$templateMessages.getMessage($messageKeyPrefix, "title")</title>
+    <base href="$PingFedBaseURL"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta http-equiv="x-ua-compatible" content="IE=edge" />
+    <link rel="stylesheet" type="text/css" href="assets/css/main.css"/>
+</head>
+
+<body class="columns-layout">
+
+<div class="ping-container ping-signin">
+
+    <!--
+    if there is a logo present in the 'company-logo' container,
+    then 'has-logo' class should be added to 'ping-header' container.
+    -->
+    <div class="ping-header">
+        <span class="company-logo"><!-- client company logo here --></span>
+        $templateMessages.getMessage($messageKeyPrefix, "title")
+    </div>
+    <!-- .ping-header -->
+
+    <div class="ping-body-container">
+
+        <div>
+            <form method="POST" action="$url" autocomplete="off">
+                
+                <div class="account-title">
+                    $templateMessages.getMessage($messageKeyPrefix, "title")
+                </div>
+
+                <div class="ping-messages">
+                    #if($errorMessages)
+                    <div class="ping-error">
+                        #foreach ($errorMessage in $errorMessages)
+                            $templateMessages.getMessage($errorMessage.getMessageKey(), $errorMessage.getParams())<br/>
+                        #end
+                    </div>
+                    #end
+                    #if($success)
+                    <div class="ping-success">$templateMessages.getMessage($messageKeyPrefix, "success")</div>
+                    #end
+                </div>
+
+                <div class="sections">
+                    <div class="section">
+
+                        <div class="section-title">
+                            $templateMessages.getMessage($messageKeyPrefix, "generalSettings")
+                        </div>
+                        #foreach ($field in $fields)
+                            #set( $count = $velocityCount % 2)
+                            #set( $fieldId = $field.getData().getId() )
+                            #set( $fieldValue = $escape.escape($populateValues.get($fieldId)) )
+                            #set( $required = "" )
+                            #if( $field.getData().getEnabledAttributes().contains("Required") )
+                                #set ($required = "required" )
+                            #end
+                            #if( $field.getName() == "Checkbox Group" )
+                                #set( $fieldValue = $populateValues.get($fieldId) )
+                            #end
+                            #set( $disabledSelect = "" )
+                            #if( $field.getName() == "Dropdown" && $field.isRequired() )
+                                #set( $disabledSelect = "disabled" )
+                            #end
+
+                            #if($count == 1)
+                            <div class="content-columns columns-2">
+                            #end
+                                <div class="content-column">
+
+                                #if( $field.getName() == "Date" )
+                                    <div class="ping-input-label input-label">
+                                        $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                    </div>
+                                    <div class="ping-input-container">
+                                        <input class="$required" id="$fieldId" type="date" name="$fieldId" value="$fieldValue" placeholder="yyyy-mm-dd" onchange="return postOnReturn(event)" />
+                                        <div class="place-bottom type-alert tooltip-text" id="required-$fieldId">
+                                            <div class="icon">!</div>
+                                            $templateMessages.getMessage($messageKeyPrefix, "missingField")
+                                        </div>
+                                    </div>
+
+                                #elseif( $field.getName() == "Text" )
+                                    <div class="ping-input-label">
+                                        $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                    </div>
+                                    <div class="ping-input-container">
+                                        <input class="$required" id="$fieldId" type="text" name="$fieldId" value="$fieldValue" onKeyPress="return postOnReturn(event)" />
+                                        <div class="place-bottom type-alert tooltip-text" id="required-$fieldId">
+                                            <div class="icon">!</div>
+                                            $templateMessages.getMessage($messageKeyPrefix, "missingField")
+                                        </div>
+                                    </div>
+
+                                #elseif( $field.getName() == "Checkbox" )
+                                    <label>
+                                        <div class="ping-checkbox-container stacked">
+                                            #if( $fieldValue.equalsIgnoreCase("true") )
+                                                <input type="checkbox" name="$fieldId" checked />
+                                            #else
+                                                <input type="checkbox" name="$fieldId" />
+                                            #end
+                                            $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                            <div class="icon"></div>
+                                        </div>
+                                    </label>
+
+                                #elseif( $field.getName() == "Checkbox Group" )
+                                    <div class="ping-input-label detached">
+                                        $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                    </div>
+                                    #foreach( $option in $field.getData().getOptions() )
+                                        <label>
+                                            <div class="ping-checkbox-container stacked">
+                                                #if( $fieldValue.contains($option) )
+                                                    <input type="checkbox" name="$fieldId" value="$option" checked />
+                                                #else
+                                                    <input type="checkbox" name="$fieldId" value="$option"/>
+                                                #end
+                                                $option
+                                                <div class="icon"></div>
+                                            </div>
+                                        </label>
+                                    #end
+
+                                #elseif( $field.getName() == "Email" )
+                                    <div class="ping-input-label">
+                                        $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                    </div>
+                                    <div class="ping-input-container">
+                                        <input class="$required" id="$fieldId" type="email" name="$fieldId" value="$fieldValue" size="36" onKeyPress="return postOnReturn(event)" />
+                                        <div class="place-bottom type-alert tooltip-text" id="required-$fieldId">
+                                            <div class="icon">!</div>
+                                            $templateMessages.getMessage($messageKeyPrefix, "missingField")
+                                        </div>
+                                    </div>
+
+                                #elseif( $field.getName() == "Phone" )
+                                    <div class="ping-input-label">
+                                        $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                    </div>
+                                    <div class="ping-input-container">
+                                        <input class="$required" id="$fieldId" type="tel"  name="$fieldId" value="$fieldValue" size="36" onKeyPress="return postOnReturn(event)" />
+                                        <div class="place-bottom type-alert tooltip-text" id="required-$fieldId">
+                                            <div class="icon">!</div>
+                                            $templateMessages.getMessage($messageKeyPrefix, "missingField")
+                                        </div>
+                                    </div>
+
+                                #elseif( $field.getName() == "Dropdown" )
+                                    <label class="input-select">
+                                        <span class="ping-input-label detached">
+                                            $templateMessages.getMessageWithDefault($messageKeyPrefix, "$fieldId", "$field.getData().getLabel()")
+                                        </span>
+                                        <div class="input-container">
+                                            <div class="wrapper">
+                                                <select id="$fieldId" name="$fieldId" class="$required" onchange="return removeRequiredDisplay(event)">
+                                                    #if($field.getData().getDefaultValue().equals(""))
+                                                        <option selected $disabledSelect value="">$templateMessages.getMessage($messageKeyPrefix, "dropDownDefault")</option>
+                                                    #end
+                                                    #foreach( $option in $field.getData().getOptions() )
+                                                        #if( $option.equals($fieldValue)) )
+                                                            <option selected value="$option">$option</option>
+                                                        #else
+                                                            <option value="$option">$option</option>
+                                                        #end
+                                                    #end
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="place-bottom type-alert tooltip-text" id="required-$fieldId" >
+                                            <div class="icon">!</div>
+                                            $templateMessages.getMessage($messageKeyPrefix, "missingDropdownOption")
+                                        </div>
+                                    </label>
+                                #end
+                                </div>
+                                <!-- content-column -->
+                            #if($count == 0)
+                            </div>
+                            <!-- content-columns columns-2-->
+                            #end
+
+                            <br>
+                        #end
+                        ##Finish off the columns div if we have an odd number of fields
+                        #if($count == 1)
+                            </div>
+                            <!-- content-columns columns-2-->
+                        #end
+                    </div>
+                    <!-- end section 1 -->
+
+                    #if($socialConnections.size() > 0)
+                    <div class="section">
+                        <div class="section-title">
+                            $templateMessages.getMessage($messageKeyPrefix, "socialConnectionsTitle")
+                        </div>
+                        <div class="social-media-container">
+                            <input type="hidden" name="$connect" value=""/>
+                            <input type="hidden" name="$disconnect" value=""/>
+
+                            #foreach ($socialConnection in $socialConnections)
+                                #set( $authSourceName = $socialConnection.authSourceName )
+                                #set( $authSourceId = $socialConnection.getAuthSourceId() )
+                                #set( $isConnected = $socialConnection.isConnected() )
+
+                                #if($isConnected)
+                                    <div class="button-container">
+                                        <span class="details-tooltip top center">
+                                            <a onclick="showTooltip(this)" class="ping-button social-media $authSourceName"
+                                                title="$templateMessages.getMessage($messageKeyPrefix, "disconnectButtonTitle") $authSourceName">
+                                                $templateMessages.getMessage($messageKeyPrefix, "disconnectButtonTitle") $authSourceName
+                                            </a>
+                                            <div class="details-content">
+                                                <div class="details-content-inner">
+                                                    <span class="details-close" onclick="hideTooltip()">
+
+                                                    </span>
+                                                    <div class="details-title">
+                                                        $templateMessages.getMessage($messageKeyPrefix, "disconnectButtonTitle") $authSourceName
+                                                    </div>
+                                                    <div class="details-body">
+                                                        <p>$templateMessages.getMessage($messageKeyPrefix, "disconnectWarning", $authSourceName)</p>
+                                                        <div class="button-group">
+                                                            <button type="button" onclick="postDisconnect('$authSourceId');" class="primary delete">$templateMessages.getMessage($messageKeyPrefix, "disconnectButtonTitle")</button>
+                                                            <br>
+                                                            <a class="cancel" onclick="hideTooltip();">$templateMessages.getMessage($messageKeyPrefix, "cancelButtonTitle")</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </span>
+                                    </div>
+                                #else
+                                    <div class="button-container">
+                                        <a onclick="postConnect('$authSourceId');" class="ping-button social-media $authSourceName"
+                                           title="$templateMessages.getMessage($messageKeyPrefix, "connectButtonTitle") $authSourceName">
+                                        $templateMessages.getMessage($messageKeyPrefix, "connectButtonTitle") $authSourceName
+                                        </a>
+                                    </div>
+                                #end
+                            #end
+                        </div>
+                    </div>
+                    #end
+                    <!-- end social connections section -->
+
+                    #if($hasLocalIdentity || $displayDelete)
+                    <div class="section">
+                        <div class="section-title">
+                            $templateMessages.getMessage($messageKeyPrefix, "yourAccountTitle")
+                        </div>
+
+                        #if($hasLocalIdentity)
+                        <div class="your-account-container">
+                            <input type="hidden" name="$changepass" value=""/>
+                            ##Pop up the tooltip if there is an error message to show.
+                            #if($passwordMessage)
+                            #set( $class = "details-tooltip top right show" )
+                            #else
+                            #set( $class = "details-tooltip top right" )
+                            #end
+
+                            <span class="$class">
+                                <a onclick="showTooltip(this)" class="cancel" title="$templateMessages.getMessage($messageKeyPrefix, "changePasswordTitle")">
+                                    $templateMessages.getMessage($messageKeyPrefix, "changePasswordTitle")
+                                </a>
+                                <div class="details-content" id="change-password-tooltip">
+                                    <div class="details-content-inner">
+                                        <span class="details-close" onclick="hideTooltip()">
+
+                                        </span>
+                                        <div class="details-title">
+                                            $templateMessages.getMessage($messageKeyPrefix, "changePasswordTitle")
+                                        </div>
+                                        <div class="details-body">
+                                            #if($passwordMessage)
+                                            <div class="ping-messages">
+                                                <div class="ping-error">$templateMessages.getMessage($passwordMessage.getMessageKey(), $passwordMessage.getParams())</div>
+                                            </div>
+                                            #end
+
+                                            <div class="ping-input-label">
+                                                $templateMessages.getMessage($messageKeyPrefix, "currentPasswordTitle")
+                                            </div>
+                                            <div class="ping-input-container">
+                                                <input id="currentPassword" class="pass-required" type="password" name="$currentPass" onKeyUp="return postPassOnReturn(event)" />
+                                                <div class="place-bottom type-alert tooltip-text" id="required-currentPassword">
+                                                    <div class="icon">!</div>
+                                                    $templateMessages.getMessage($messageKeyPrefix, "missingField")
+                                                </div>
+                                            </div>
+
+                                            #if($passwordPolicy && $passwordPolicy.trim() != "")
+                                            <div class = "password-requirements">
+                                                <a id= "requirements-link" onClick="toggleReq();">$templateMessages.getMessage($messageKeyPrefix, "passwordRequirementsTitle")<span id="down-arrow" style="display:inline-block;"></span><span id="up-arrow" style="display:none;"></span></a>
+                                                <div class = "requirements-message" style="display: none;" id="req-message">
+                                                    $passwordPolicy
+                                                </div>
+                                            </div>
+                                            #end
+
+                                            <div class="ping-input-label">
+                                                $templateMessages.getMessage($messageKeyPrefix, "newPasswordTitle")
+                                            </div>
+                                            <div class="ping-input-container">
+                                                <input id="password" class="pass-required reveal" type="password" name="$pass" onKeyUp="return postPassOnReturn(event)" />
+                                                <a id="reveal" class="password-show-button icon-view" onclick="revealPassword();"></a>
+                                                <div class="place-bottom type-alert tooltip-text" id="required-password">
+                                                    <div class="icon">!</div>
+                                                    $templateMessages.getMessage($messageKeyPrefix, "missingField")
+                                                </div>
+                                            </div>
+                                            <div class="button-group">
+                                                <button type="button" onclick="postChangePass();" class="primary">$templateMessages.getMessage($messageKeyPrefix, "changePasswordButtonTitle")</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </span>
+                        </div>
+                        <!-- your-account-container -->
+                        #end
+
+                        #if($displayDelete)
+                        <div class="your-account-container">
+                            <span class="details-tooltip top right">
+                                <a href="javascript:void(0)" onclick="showTooltip(this)" class="cancel" title='$templateMessages.getMessage($messageKeyPrefix, "deleteAccountPopupTitle")'>
+                                $templateMessages.getMessage($messageKeyPrefix, "deleteAccountPopupTitle")
+                                </a>
+                                <div class="details-content">
+                                    <div class="details-content-inner">
+                                        <span class="details-close" onclick="hideTooltip()">
+
+                                        </span>
+                                        <div class="details-title">
+                                            $templateMessages.getMessage($messageKeyPrefix, "deleteAccountButtonTitle")
+                                        </div>
+                                        <div class="details-body">
+                                            <p>$templateMessages.getMessage($messageKeyPrefix, "deleteWarning")</p>
+                                            <div class="button-group">
+                                                <button type="button" onclick="postDelete();" class="primary delete">$templateMessages.getMessage($messageKeyPrefix, "deleteButtonTitle")</button>
+                                                <br>
+                                                <a class="cancel" onclick="hideTooltip();">$templateMessages.getMessage($messageKeyPrefix, "cancelButtonTitle")</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </span>
+                        </div>
+                        #end
+
+                    </div>
+                    #end
+                    <!-- end display-delete -->
+                    
+                </div>
+                <!-- sections -->
+
+                <!-- delete 'right' to center align buttons -->
+                <div class="ping-buttons right">
+                    <input type="hidden" name="cSRFToken" value="$cSRFToken">
+                    <input type="hidden" name="$save" value=""/>
+                    <input type="hidden" name="$logout" value=""/>
+                    <input type="hidden" name="$delete" value=""/>
+
+                    <a href="javascript:void(0)" onclick="postLogout();" class="ping-button secondary" title='$templateMessages.getMessage($messageKeyPrefix, "logoutButtonTitle")'>
+                    $templateMessages.getMessage($messageKeyPrefix, "logoutButtonTitle")
+                    </a>
+
+                    <a onclick="postSave();" class="ping-button normal allow" title='$templateMessages.getMessage($messageKeyPrefix, "saveButtonTitle")'>
+                    $templateMessages.getMessage($messageKeyPrefix, "saveButtonTitle")
+                    </a>
+                </div>
+                
+            </form>
+        </div>
+        <!-- .ping-body/ blank -->
+    </div>
+    <!-- .ping-body-container -->
+
+    <div class="ping-footer-container">
+        <div class="ping-footer">
+            <div class="ping-credits"></div>
+            <div class="ping-copyright">$templateMessages.getMessage("global.footerMessage")</div>
+        </div>
+        <!-- .ping-footer -->
+    </div>
+    <!-- .ping-footer-container -->
+
+</div>
+<!-- .ping-container -->
+
+<script type="text/javascript">
+
+    function postDisconnect(id) {
+        document.forms[0]['$disconnect'].value = id;
+        document.forms[0].submit();
+    }
+
+    function postConnect(id) {
+        document.forms[0]['$connect'].value = id;
+        document.forms[0].submit();
+    }
+
+    function postSave() {
+        if(!requiredFieldsMissing(document.getElementsByClassName("required"))) {
+            // run browser validation
+            if(document.forms[0].checkValidity && !document.forms[0].checkValidity() && document.forms[0].reportValidity) {
+                document.forms[0].reportValidity();
+                return false;
+            }
+            document.forms[0]['$save'].value = 'clicked';
+            document.forms[0].submit();
+        }
+    }
+
+    function toggleReq() {
+        var requirements = document.getElementById("req-message");
+        var up = document.getElementById("up-arrow");
+        var down = document.getElementById("down-arrow");
+        if (requirements.style.display ==="inline-block"){
+            requirements.style.display = "none";
+            down.style.display = "inline-block";
+            up.style.display = "none";
+        }
+        else {
+            requirements.style.display = "inline-block";
+            down.style.display = "none";
+            up.style.display = "inline-block";
+        }
+    }
+    
+    function revealPassword() {
+        if (document.getElementById('password').type === 'password') {
+            var inputType = document.getElementById("password");
+            inputType.setAttribute('type', 'text');
+
+            document.getElementById('reveal').className = 'password-show-button icon-view-hidden';
+        }
+        else {
+            var inputType = document.getElementById("password");
+            inputType.setAttribute('type', 'password');
+
+            document.getElementById('reveal').className = 'password-show-button icon-view';
+        }
+    }
+
+    function requiredFieldsMissing(listOfRequiredFields) {
+        var foundMissingField = false;
+        for (var i = 0; i < listOfRequiredFields.length; i++) {
+            if(listOfRequiredFields[i].tagName === 'SELECT' &&
+                listOfRequiredFields[i].selectedIndex === 0 &&
+                listOfRequiredFields[i].options[0].disabled) {
+                document.getElementById("required-" + listOfRequiredFields[i].id).className += ' show';
+                foundMissingField = true;
+            }
+            else if (!listOfRequiredFields[i].value) {
+                document.getElementById("required-" + listOfRequiredFields[i].id).className += ' show';
+                foundMissingField = true;
+            }
+        }
+        return foundMissingField;
+    }
+
+    function removeRequiredDisplay(e) {
+        var requiredDisplay  = document.getElementById("required-" + e.target.id);
+        requiredDisplay.className = requiredDisplay.className.replace(/\bshow\b/,'');
+    }
+
+    function postChangePass() {
+        if(!requiredFieldsMissing(document.getElementsByClassName("pass-required"))) {
+            document.forms[0]['$changepass'].value = 'clicked';
+            document.forms[0].submit();
+        }
+    }
+    
+    function postDelete() {
+        document.forms[0]['$delete'].value = 'clicked';
+        document.forms[0].submit();
+    }
+
+    function postLogout() {
+        document.forms[0]['$logout'].value = 'clicked';
+        document.forms[0].submit();
+    }
+
+    function postPassOnReturn(e) {
+        removeRequiredDisplay(e);
+
+        var keycode;
+        if (window.event) keycode = window.event.keyCode;
+        else if (e) keycode = e.which;
+        else return true;
+
+        if (keycode == 13) {
+            postChangePass();
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function postOnReturn(e) {
+        removeRequiredDisplay(e);
+
+        var keycode;
+        if (window.event) keycode = window.event.keyCode;
+        else if (e) keycode = e.which;
+        else return true;
+
+        if (keycode == 13) {
+            postSave();
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function hideTooltip(){
+        var tooltips = document.getElementsByClassName("details-tooltip");
+        for (var i = 0; i < tooltips.length; i++) {
+            tooltips[i].className = tooltips[i].className.replace("show", "");
+        }
+    }
+
+    function showTooltip(element) {
+        hideTooltip();
+        element.parentElement.className += ' show';
+    }
+
+    function setMobile(mobile) {
+        var className = ' mobile',
+            hasClass = (bodyTag.className.indexOf(className) !== -1);
+
+        if(mobile && !hasClass) {
+            bodyTag.className += className;
+        } else if (!mobile && hasClass) {
+            bodyTag.className = bodyTag.className.replace(className, '');
+        }
+    }
+
+    function getScreenWidth() {
+        return (window.outerHeight) ? window.outerWidth : document.body.clientWidth;
+    }
+
+    var bodyTag = document.getElementsByTagName('body')[0],
+        width = getScreenWidth();
+
+    if (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        setMobile(true);
+    } else {
+        setMobile((width <= 480));
+        window.onresize = function() {
+            width = getScreenWidth();
+            setMobile((width <= 480));
+        }
+    }
+
+    #if($passwordMessage)
+        if (/iPhone|iPod/i.test(navigator.userAgent)) {
+            var tooltip = document.getElementById('change-password-tooltip');
+            tooltip.scrollIntoView();
+        }
+        else {
+            document.getElementById('currentPassword').focus();
+        }
+    #end
+</script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+ PING-IDENTITY-PF-MIB DEFINITIONS ::= BEGIN
+      IMPORTS
+           enterprises, Counter32, MODULE-IDENTITY, OBJECT-TYPE FROM SNMPv2-SMI
+           TRAP-TYPE FROM RFC-1215;
+
+ ping-identity MODULE-IDENTITY
+ LAST-UPDATED "201205311331Z"
+
+ ORGANIZATION "Ping Identity Corporation"
+
+ CONTACT-INFO
+    "
+    Ping Identity Corp.
+    1001 17th Street
+    Suite 100
+    Denver, CO 80202
+    Phone: 303.468.2900
+    http://www.pingidentity.com
+    "
+ DESCRIPTION
+    "The MIB module which provides runtime performance data 
+      of PingFederate."
+ REVISION     "201205311331Z"  -- 31st May 2012
+     DESCRIPTION
+             "Modify MIBs for Jetty runtime"
+    ::= { enterprises 28867 } -- {1 3 6 1 4 1 28867}
+
+ ping-federate OBJECT IDENTIFIER ::= { ping-identity 2 }
+ jetty OBJECT IDENTIFIER ::= { ping-identity 4 }
+
+ threading OBJECT IDENTIFIER ::= { jetty 2 }
+ operating-system OBJECT IDENTIFIER ::= { jetty 3 }
+ java-info OBJECT IDENTIFIER ::= { jetty 4 }
+
+-- pingfederate	 
+
+ transaction-count OBJECT-TYPE
+   	SYNTAX		Counter32
+        MAX-ACCESS		read-only 
+   	STATUS		current
+   	DESCRIPTION	"Total SSO/SLO runtime transactions for this server instance since installation"
+   	::= { ping-federate 1 }
+
+ failure-count OBJECT-TYPE
+   	SYNTAX		Counter32
+        MAX-ACCESS		read-only 
+   	STATUS		current
+   	DESCRIPTION	"Total Failed SSO/SLO runtime transactions for this server instance since installation"
+   	::= { ping-federate 2 }
+
+ heartbeat-trap TRAP-TYPE
+       ENTERPRISE ping-federate
+       DESCRIPTION "This is the heartbeat that PF sends"
+       ::= 3
+
+-- jetty
+
+thread-count OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "The number of active threads in the system"
+  ::= { threading 1 }
+  
+idle-threads OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "The number of idle threads in the system"
+  ::= { threading 2 } 
+  
+max-threads OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "The maximum number of threads that can be created in the system"
+  ::= { threading 3 } 
+  
+min-threads OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "The minimum number of threads that will exist in the system"
+  ::= { threading 4 } 
+  
+low-threads OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "An indicator for low threads in the system"
+  ::= { threading 5 }
+  
+jvm-version OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "The Java Runtime version"
+  ::= { java-info 1 } 
+ 
+jvm-name OBJECT-TYPE
+  SYNTAX INTEGER
+  MAX-ACCESS read-only
+    STATUS current
+  DESCRIPTION
+    "The Java Runtime name"
+  ::= { java-info 2 }
+  
+ os-name OBJECT-TYPE
+	SYNTAX OCTET STRING
+	MAX-ACCESS read-only 
+   	STATUS current	
+	DESCRIPTION
+		"Operating System name"
+	::= { operating-system 1 }
+
+os-version OBJECT-TYPE
+	SYNTAX OCTET STRING
+	MAX-ACCESS read-only 
+   	STATUS current	
+	DESCRIPTION
+		"Operating System version"
+	::= { operating-system 2 }
+	
+process-cpu-time OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only 
+   	STATUS current	
+	DESCRIPTION
+		"Time system spent in server process (ms)"
+	::= { operating-system 3 }
+	
+available-processors OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only 
+   	STATUS current	
+	DESCRIPTION
+		"The number of CPUs available"
+	::= { operating-system 4 }
+	
+total-physical-memory OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+   	STATUS current	 
+	DESCRIPTION
+		"Total RAM on-board (bytes)"
+	::= { operating-system 5 }
+	
+free-physical-memory OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only
+   	STATUS current	 
+	DESCRIPTION
+		"Free RAM (bytes)"
+	::= { operating-system 6 }
+	
+total-swap-space OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only 
+   	STATUS current	
+	DESCRIPTION
+		"System swap size (bytes)"
+	::= { operating-system 7 }
+	
+free-swap-space OBJECT-TYPE
+	SYNTAX INTEGER
+	MAX-ACCESS read-only 
+   	STATUS current	
+	DESCRIPTION
+		"Free swap size (bytes)"
+	::= { operating-system 8 }
+  
+ END

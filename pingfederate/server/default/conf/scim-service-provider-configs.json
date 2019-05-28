@@ -1,0 +1,41 @@
+{
+  "schemas": ["urn:scim:schemas:core:1.0"],
+  "documentationUrl":"https://documentation.pingidentity.com",
+  "patch": {
+    "supported":false
+  },
+  "bulk": {
+    "supported":false
+  },
+  "filter": {
+    "supported":true
+  },
+  "changePassword" : {
+    "supported":true
+  },
+  "sort": {
+    "supported":false
+  },
+  "etag": {
+    "supported":false
+  },
+  "xmlDataFormat": {
+    "supported":false
+  },
+  "authenticationSchemes": [
+    {
+      "name": "HTTP Basic",
+      "description": "Authentication using HTTP Basic",
+      "specUrl":"http://www.ietf.org/rfc/rfc2617.txt",
+      "documentationUrl":"https://documentation.pingidentity.com/pingfederate/pf/?contextId=concept_backChannelAuthentication",
+      "type":"httpbasic"
+    },
+    {
+      "name": "TLS Client Certificate",
+      "description": "Authentication via TLS Client Certificate",
+      "specUrl":"http://www.ietf.org/rfc/rfc2246.txt",
+      "documentationUrl":"https://documentation.pingidentity.com/pingfederate/pf/?contextId=concept_backChannelAuthentication",
+      "type":"tls"
+    }
+  ]
+}
