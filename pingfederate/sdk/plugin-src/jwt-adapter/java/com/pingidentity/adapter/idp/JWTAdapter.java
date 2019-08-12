@@ -28,6 +28,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -51,12 +53,17 @@ import org.sourceid.saml20.adapter.AuthnAdapterException;
 import org.sourceid.saml20.adapter.attribute.AttributeValue;
 import org.sourceid.saml20.adapter.conf.Configuration;
 import org.sourceid.saml20.adapter.conf.Field;
+import org.sourceid.saml20.adapter.gui.ActionDescriptor;
 import org.sourceid.saml20.adapter.gui.AdapterConfigurationGuiDescriptor;
 import org.sourceid.saml20.adapter.gui.CheckBoxFieldDescriptor;
+import org.sourceid.saml20.adapter.gui.FieldDescriptor;
+import org.sourceid.saml20.adapter.gui.TableDescriptor;
 import org.sourceid.saml20.adapter.gui.TextFieldDescriptor;
 import org.sourceid.saml20.adapter.gui.event.ConfigurationListener;
 import org.sourceid.saml20.adapter.gui.event.EventException;
-import org.sourceid.saml20.adapter.gui.TextAreaFieldDescriptor;;
+import org.sourceid.saml20.adapter.gui.event.PreRenderCallback;
+import org.sourceid.saml20.adapter.gui.TextAreaFieldDescriptor;
+import org.sourceid.saml20.adapter.gui.validation.ConfigurationValidator;
 import org.sourceid.saml20.adapter.gui.validation.FieldValidator;
 import org.sourceid.saml20.adapter.gui.validation.ValidationException;
 import org.sourceid.saml20.adapter.gui.validation.impl.RequiredFieldValidator;
@@ -67,8 +74,9 @@ import org.sourceid.saml20.domain.ConditionType;
 import java.security.spec.X509EncodedKeySpec;
 
 import com.amazonaws.util.Base64;
-import com.pingidentity.admin.api.model.plugin.FieldDescriptor;
-import com.pingidentity.admin.api.model.plugin.FieldDescriptorType;
+//import com.pingidentity.admin.api.model.plugin.FieldDescriptor;
+//import com.pingidentity.admin.api.model.plugin.FieldDescriptor;
+//import com.pingidentity.admin.api.model.plugin.FieldDescriptorType;
 import com.pingidentity.pingcommons.crypto.CertificateUtil;
 import com.pingidentity.sdk.AuthnAdapterResponse;
 import com.pingidentity.sdk.AuthnAdapterResponse.AUTHN_STATUS;
@@ -114,10 +122,11 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
         }
     }
     
-    private static final String CONFIG_SUBJECT_CLAIM = "Subject Claim Name";
-    private static final String CONFIG_DOMAIN_CLAIM = "Domain Claim Name";
+//    private static final String CONFIG_SUBJECT_CLAIM = "Subject Claim Name";
+//    private static final String CONFIG_DOMAIN_CLAIM = "Domain Claim Name";
+    private static final String CONFIG_CHECK_TOKEN_SIGNATURE = "Verify Token Signature";
     private static final String CONFIG_PUBLIC_KEY = "Token Signing Public Key";
-    private static final String ATTR_SUB = "subject";
+    private static final String ATTR_SUB = "sub";
     private static final String ATTR_DOMAIN = "domain";
 
     private final IdpAuthnAdapterDescriptor descriptor;
@@ -126,7 +135,9 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
     
     private String subjectClaim = null;
     private String domainClaim = null;
+    private boolean checkSignature;
     private boolean useCertificate;
+    private Set<String> fields = null;
     private GenericPublicKey publickKey = null;
 
     /**
@@ -135,15 +146,20 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
      */
     public JWTAdapter()
     {
-    	TextFieldDescriptor subjectClaimNameField = new TextFieldDescriptor(CONFIG_SUBJECT_CLAIM,
-    			"Enter the claim name that will identify the user");
-    	subjectClaimNameField.addValidator(new RequiredFieldValidator());
-    	subjectClaimNameField.setDefaultValue("sub");
+//    	TextFieldDescriptor subjectClaimNameField = new TextFieldDescriptor(CONFIG_SUBJECT_CLAIM,
+//    			"Enter the claim name that will identify the user");
+//    	subjectClaimNameField.addValidator(new RequiredFieldValidator());
+//    	subjectClaimNameField.setDefaultValue("sub");
+//    	
+//    	TextFieldDescriptor subjectClaimDomainField = new TextFieldDescriptor(CONFIG_DOMAIN_CLAIM,
+//    			"Enter the claim name that will identify the user's domain");
+//    	subjectClaimDomainField.addValidator(new RequiredFieldValidator());
+//    	subjectClaimDomainField.setDefaultValue("domain");
     	
-    	TextFieldDescriptor subjectClaimDomainField = new TextFieldDescriptor(CONFIG_DOMAIN_CLAIM,
-    			"Enter the claim name that will identify the user's domain");
-    	subjectClaimDomainField.addValidator(new RequiredFieldValidator());
-    	subjectClaimDomainField.setDefaultValue("domain");
+    	CheckBoxFieldDescriptor checkTokenSignatureField = new CheckBoxFieldDescriptor(CONFIG_CHECK_TOKEN_SIGNATURE,
+    			"Uncheck if you don't want the adapter to verify the token's signature");
+    	checkTokenSignatureField.setDefaultValue(true);
+    	
     	
     	TextAreaFieldDescriptor tokenPublicKeyField = new TextAreaFieldDescriptor(CONFIG_PUBLIC_KEY,
     			"Enter the public certificate or key (in PEM format) that will be used to verify the received token", 6, 26);
@@ -154,15 +170,58 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
         // Create a GUI descriptor
         AdapterConfigurationGuiDescriptor guiDescriptor = new AdapterConfigurationGuiDescriptor(
                 "Set the details of the JWT to identify your SSO clients");
-        guiDescriptor.addField(subjectClaimNameField);
-        guiDescriptor.addField(subjectClaimDomainField);        
+//        guiDescriptor.addField(subjectClaimNameField);
+//        guiDescriptor.addField(subjectClaimDomainField);
+    	checkTokenSignatureField.addValidator(new FieldValidator() {
+			
+			@Override
+			public void validate(Field field) throws ValidationException {
+				boolean verifySig = field.getValueAsBoolean();
+				List<FieldDescriptor> fields = guiDescriptor.getFields();
+				boolean hasPubKeyField = false;
+				for (int i = 0; i < fields.size() && !hasPubKeyField; i++) {
+					if (fields.get(i).getName().equals(CONFIG_PUBLIC_KEY)) {
+						hasPubKeyField = true;
+					}
+				}
+				if (verifySig && !hasPubKeyField) {
+					throw new ValidationException("You must add a public key");
+				}
+			}
+		});
+        guiDescriptor.addField(checkTokenSignatureField);
         guiDescriptor.addField(tokenPublicKeyField);
+        
+        guiDescriptor.addPreRenderCallback(new PreRenderCallback() {
+			
+			@Override
+			public void callback(List<FieldDescriptor> fields,
+					List<FieldDescriptor> advancedFields, List<TableDescriptor> tables,
+					Configuration config) {
+				boolean checkSig = config.getBooleanFieldValue(CONFIG_CHECK_TOKEN_SIGNATURE);
+				int tokenIndex = -1;
+				int index = 0;
+				for (FieldDescriptor field : fields) {
+					if (field.getName().equals(CONFIG_PUBLIC_KEY)) {
+						tokenIndex = index;
+					}
+					index++;
+				}
+				if (tokenIndex != -1 && !checkSig) {
+					fields.remove(tokenIndex);
+				}
+				else if (tokenIndex == -1 && checkSig) {
+					fields.add(tokenPublicKeyField);
+				}
+			}
+		});
 
         // Create the Idp authentication adapter descriptor
         Set<String> contract = new HashSet<String>();
         contract.add(ATTR_SUB);
         contract.add(ATTR_DOMAIN);
-        descriptor = new IdpAuthnAdapterDescriptor(this, "JWT Adapter", contract, false, guiDescriptor, false);
+        descriptor = new IdpAuthnAdapterDescriptor(this, "JWT Adapter", contract, true, guiDescriptor, false);
+        descriptor.setSupportsExtendedContract(true);
     }
 
     /**
@@ -261,14 +320,21 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
      */
     public void configure(Configuration configuration)
     {
-    	subjectClaim = configuration.getFieldValue(CONFIG_SUBJECT_CLAIM);
-    	domainClaim = configuration.getFieldValue(CONFIG_DOMAIN_CLAIM);
-    	try {
-    		publickKey = parsePublicKey(configuration.getFieldValue(CONFIG_PUBLIC_KEY));
+//    	subjectClaim = configuration.getFieldValue(CONFIG_SUBJECT_CLAIM);
+//    	domainClaim = configuration.getFieldValue(CONFIG_DOMAIN_CLAIM);
+    	checkSignature = configuration.getBooleanFieldValue(CONFIG_CHECK_TOKEN_SIGNATURE);
+    	if (checkSignature) {
+	    	try {
+	    		publickKey = parsePublicKey(configuration.getFieldValue(CONFIG_PUBLIC_KEY));
+	    	}
+	    	catch (Exception e) {
+				publickKey = null;
+	    	}
     	}
-    	catch (Exception e) {
-			publickKey = null;
+    	else {
+    		publickKey = null;
     	}
+    	fields = configuration.getAdditionalAttrNames();
     }
 
     /**
@@ -360,7 +426,7 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
         String authTokenEncoded = authHeader.substring("bearer".length()).trim();
         System.out.println("Encoded JWT received: " + authTokenEncoded);
         
-        if (publickKey == null) {
+        if (publickKey == null && checkSignature) {
         	authnAdapterResponse.setAuthnStatus(AUTHN_STATUS.FAILURE);
         	authnAdapterResponse.setErrorMessage("Failed to parse public key");
         }
@@ -370,14 +436,18 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
         		.setJwsAlgorithmConstraints(
     				new AlgorithmConstraints(ConstraintType.WHITELIST,
     						AlgorithmIdentifiers.RSA_USING_SHA256));
-        
-        if (publickKey.getType().equals("RSA")) {
-        	jwtConsumerBuilder.setVerificationKey(publickKey.getPublicKeyRSA().getKey());
+        if (checkSignature) {
+	        if (publickKey.getType().equals("RSA")) {
+	        	jwtConsumerBuilder.setVerificationKey(publickKey.getPublicKeyRSA().getKey());
+	        }
+	        else if (publickKey.getType().equals("X509")) {
+	        	X509VerificationKeyResolver resolver = new X509VerificationKeyResolver(publickKey.getPublicKeyX509());
+	        	resolver.setTryAllOnNoThumbHeader(true);
+	        	jwtConsumerBuilder.setVerificationKeyResolver(resolver);
+	        }
         }
-        else if (publickKey.getType().equals("X509")) {
-        	X509VerificationKeyResolver resolver = new X509VerificationKeyResolver(publickKey.getPublicKeyX509());
-        	resolver.setTryAllOnNoThumbHeader(true);
-        	jwtConsumerBuilder.setVerificationKeyResolver(resolver);
+        else {
+        	jwtConsumerBuilder.setSkipSignatureVerification();
         }
         JwtConsumer jwtConsumer = jwtConsumerBuilder.build();
         
@@ -386,8 +456,16 @@ public class JWTAdapter implements IdpAuthenticationAdapterV2
         	System.out.println("JWT validation succeeded! " + jwtClaims);
         	
         	HashMap<String, Object> attributes = new HashMap<String, Object>();
-            attributes.put(ATTR_SUB, jwtClaims.getClaimValue(subjectClaim));
-            attributes.put(ATTR_DOMAIN, jwtClaims.getClaimValue(domainClaim));
+        	System.out.println("Writing " + jwtClaims.getClaimValue(ATTR_SUB) + " into: " + ATTR_SUB);
+            attributes.put(ATTR_SUB, jwtClaims.getClaimValue(ATTR_SUB));
+            System.out.println("Writing " + jwtClaims.getClaimValue(ATTR_DOMAIN) + " into: " + ATTR_DOMAIN);
+            attributes.put(ATTR_DOMAIN, jwtClaims.getClaimValue(ATTR_DOMAIN));
+            System.out.println(fields.size());
+            System.out.println(fields);
+            for (String field : fields) {
+                System.out.println("Writing " + jwtClaims.getClaimValue(field) + " into: " + field);
+				attributes.put(field, jwtClaims.getClaimValue(field));
+			}
 
             authnAdapterResponse.setAttributeMap(attributes);
             authnAdapterResponse.setAuthnStatus(AUTHN_STATUS.SUCCESS);
